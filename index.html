@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dataset Labeling - Driving Scenarios</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #2563eb; --primary-dark: #1e40af;
+      --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+      --bg-main: #0f172a; --bg-card: #1e293b; --bg-hover: #334155;
+      --text-primary: #f1f5f9; --text-secondary: #94a3b8;
+      --border: #334155; --shadow: rgba(0,0,0,0.3);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-primary); line-height: 1.6; overflow-x: hidden; }
+    .app-container { min-height: 100vh; padding: 2rem; }
+    .header { max-width: 1400px; margin: 0 auto 2rem; text-align: center; padding-bottom: 2rem; border-bottom: 2px solid var(--border); }
+    .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .header p { color: var(--text-secondary); font-size: 1.1rem; }
+    .main-content { max-width: 1400px; margin: 0 auto; }
+    .setup-screen { background: var(--bg-card); border-radius: 16px; padding: 3rem; box-shadow: 0 20px 60px var(--shadow); max-width: 800px; margin: 0 auto; }
+    .setup-screen h2 { font-size: 1.8rem; margin-bottom: 1.5rem; }
+    .setup-instructions { background: var(--bg-main); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border-left: 4px solid var(--primary); }
+    .setup-instructions ol { margin-left: 1.5rem; color: var(--text-secondary); }
+    .setup-instructions li { margin-bottom: 0.5rem; }
+    .setup-instructions code { background: rgba(255,255,255,0.1); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.9rem; }
+    .input-group { margin-bottom: 1.5rem; }
+    .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .input-group input, .input-group textarea { width: 100%; padding: 0.75rem 1rem; background: var(--bg-main); border: 2px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 0.95rem; transition: all 0.2s; }
+    .input-group input:focus, .input-group textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .input-group textarea { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; min-height: 100px; resize: vertical; }
+    .input-group small { display: block; margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; }
+    .btn { padding: 0.75rem 2rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #059669; transform: translateY(-1px); }
+    .btn-secondary { background: var(--bg-hover); color: var(--text-primary); }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    .labeling-screen { display: grid; gap: 2rem; }
+    .progress-bar { background: var(--bg-card); border-radius: 12px; padding: 1.5rem; }
+    .progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .progress-track { height: 8px; background: var(--bg-main); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); transition: width 0.3s ease; }
+    .image-viewer { background: var(--bg-card); border-radius: 16px; padding: 2rem; box-shadow: 0 10px 40px var(--shadow); }
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .image-container { position: relative; background: var(--bg-main); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s; aspect-ratio: 16/9; }
+    .image-container:hover { transform: scale(1.02); }
+    .image-container img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .image-label { position: absolute; top: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.7); color: white; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+    .img-error { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: #1e293b; color: var(--text-secondary); font-size: 0.8rem; flex-direction: column; gap: 0.5rem; text-align: center; padding: 1rem; }
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 2rem; }
+    .modal img { max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .modal-close { position: absolute; top: 2rem; right: 2rem; background: white; color: black; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; font-size: 1.5rem; }
+    .question-form { background: var(--bg-card); border-radius: 16px; padding: 2rem; box-shadow: 0 10px 40px var(--shadow); }
+    .question-section { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .question-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .question-section h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary); }
+    .question-text { font-size: 1.05rem; margin-bottom: 1rem; color: var(--text-primary); font-weight: 500; }
+    .example-answer { background: var(--bg-main); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--warning); font-size: 0.9rem; color: var(--text-secondary); }
+    .example-answer strong { color: var(--warning); display: block; margin-bottom: 0.5rem; }
+    .radio-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .radio-option { flex: 1; min-width: 120px; }
+    .radio-option input[type="radio"] { display: none; }
+    .radio-option label { display: block; padding: 0.75rem 1.5rem; background: var(--bg-main); border: 2px solid var(--border); border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    .radio-option input[type="radio"]:checked + label { background: var(--primary); border-color: var(--primary); color: white; }
+    .radio-option label:hover { border-color: var(--primary); }
+    .action-buttons { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; flex-wrap: wrap; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--bg-card); padding: 1.5rem; border-radius: 12px; text-align: center; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem; }
+    .loading { text-align: center; padding: 3rem; color: var(--text-secondary); }
+    .spinner { border: 3px solid var(--border); border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .alert { padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; }
+    .alert-info { background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.3); color: #60a5fa; }
+    .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+    .alert-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+    .alert-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+    .labeler-badge { background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4); color: #c4b5fd; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 500; display: inline-block; }
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+  const { useState, useEffect, useCallback } = React;
+
+  // ── SITUACIONES Y PREGUNTAS ────────────────────────────────────────────
+  const SITUATIONS = {
+    'Traffic light': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Do you see any red traffic lights that could affect the lane the car is in?', type: 'yes_no', example: 'A red traffic light is visible directly ahead in our lane, aligned with our driving direction, so it affects us.' },
+        { id: 'q2', text: 'Which color has the traffic light that affects our car?', type: 'green_red', example: 'The traffic light facing our lane shows green, and there are no conflicting signals.' },
+        { id: 'q3', text: 'Is our car in a right or left lane from which we can turn after the traffic light?', type: 'yes_no', example: 'The vehicle is positioned in the rightmost lane with a right-turn arrow marking, indicating we can turn after the light.' },
+        { id: 'q4', text: 'Do you see in the situation more than 1 traffic light in our direction with different colours?', type: 'yes_no', example: 'Two traffic lights facing our direction show different colors, one red and one green, indicating multiple signals affecting traffic flow.' }
+      ]
+    },
+    'Leading braking': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Do we have a car with braking lights on directly in front of us in our lane?', type: 'yes_no', example: 'A vehicle directly ahead in our lane shows illuminated red brake lights.' },
+        { id: 'q2', text: 'Are we approaching the vehicle in front of us in our lane?', type: 'yes_no', example: 'The distance to the vehicle ahead is decreasing, indicating we are approaching it.' },
+        { id: 'q3', text: 'Are we stopped, or is the car in front of us stopped?', type: 'yes_no', example: 'The vehicle ahead appears stationary with brake lights on, and no motion blur is visible.' },
+        { id: 'q4', text: 'Are we stopping in a traffic jam?', type: 'yes_no', example: 'Multiple vehicles ahead are closely spaced and stationary, suggesting congestion or traffic jam conditions.' }
+      ]
+    },
+    'Cut in': {
+      timeSpan: '-3, -1.5, 0, 1.5, 3',
+      questions: [
+        { id: 'q1', text: 'Are there any moving cars in the adjacent lanes to our right or left that are changing into our lane?', type: 'yes_no', example: 'A car from the left lane is crossing the lane markings into our lane.' },
+        { id: 'q2', text: 'Is there any car merging into our lane directly in front of us, with nothing between the new car and us?', type: 'yes_no', example: 'A vehicle has entered our lane directly ahead, with no other vehicle separating it from us.' },
+        { id: 'q3', text: 'Are we in a roundabout?', type: 'yes_no', example: 'The circular road layout and yield signs indicate we are inside a roundabout.' },
+        { id: 'q4', text: 'Are we in an intersection?', type: 'yes_no', example: 'Road markings and crossing lanes indicate we are at an intersection.' },
+        { id: 'q5', text: 'Do you see any car on top of the lines that delimit our lane, either on the left or the right?', type: 'yes_no', example: 'A vehicle is partially positioned over the dashed lane marking on our right.' }
+      ]
+    },
+    'Construction site': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Are there any construction signs, such as cones, yellow signs, lights, or closed lanes?', type: 'yes_no', example: 'Orange cones and temporary yellow signage are visible along the road.' },
+        { id: 'q2', text: 'Are the road lines yellow?', type: 'yes_no', example: 'The lane markings are yellow instead of standard white, indicating temporary road layout.' },
+        { id: 'q3', text: 'Are there any workers working on or around the road?', type: 'yes_no', example: 'Workers wearing reflective safety vests are visible near the roadside.' }
+      ]
+    },
+    'Crossing object': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Is there an intersection or a non-continuous lane ahead of our car?', type: 'yes_no', example: 'The lane markings ahead are interrupted, indicating an intersection.' },
+        { id: 'q2', text: 'Is there any vehicle or pedestrian in front of our car moving in a different direction than us?', type: 'yes_no', example: 'A pedestrian is crossing from left to right across our path.' },
+        { id: 'q3', text: 'Do we have any vehicle ahead of us in our lane, traveling in the same direction as us?', type: 'yes_no', example: 'A vehicle ahead is aligned with our lane and moving in the same direction.' }
+      ]
+    },
+    'Lateral parked car': {
+      timeSpan: '-1, -0.5, 0, 0.5, 1',
+      questions: [
+        { id: 'q1', text: 'Are there cars to the right or left of the lane we are driving in?', type: 'yes_no', example: 'Parked vehicles are visible along the right side of the road.' },
+        { id: 'q2', text: 'Are there any cars parked parallel or perpendicular on the left or right of our car?', type: 'yes_no', example: 'Several vehicles are parked parallel to the curb on the right.' },
+        { id: 'q3', text: 'Are we in a city where cars can park along the sides, or on a highway?', type: 'yes_no', example: 'Buildings and curbside parking indicate an urban environment.' },
+        { id: 'q4', text: 'Are we in a middle lane with more traffic lanes on either side?', type: 'yes_no', example: 'Lane markings show our vehicle is in the center lane with lanes on both sides.' }
+      ]
+    },
+    'Pedestrian': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Are we on a narrow street where the sidewalks and/or bike lane are right next to the roadway and visible?', type: 'yes_no', example: 'The street is narrow with sidewalks directly adjacent to the driving lane.' },
+        { id: 'q2', text: 'Are there any pedestrians or bicycles stopped or traveling alongside our car on the left or right?', type: 'yes_no', example: 'A cyclist is riding parallel to our vehicle on the right side.' },
+        { id: 'q3', text: "Could the pedestrian's path intersect with our trajectory?", type: 'yes_no', example: 'The pedestrian is walking toward the roadway and may cross our lane.' }
+      ]
+    },
+    'Merging lane': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Is the vehicle in an acceleration lane on a highway?', type: 'yes_no', example: 'The lane widens on the right with merge markings typical of an acceleration lane.' },
+        { id: 'q2', text: 'Is there an acceleration lane for a highway on the right or left, adjacent to our lane?', type: 'yes_no', example: 'A separate lane on the right is tapering into our lane.' },
+        { id: 'q3', text: 'Is there any lane whose outer lines end at the lines of our lane?', type: 'yes_no', example: 'The right lane markings converge into our lane, indicating a merge.' }
+      ]
+    },
+    'Intersection road': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Is there an intersection ahead of us?', type: 'yes_no', example: 'Cross streets and traffic signals are visible ahead.' },
+        { id: 'q2', text: 'Does that intersection maintain the lane lines?', type: 'yes_no', example: 'Lane markings continue clearly through the intersection.' },
+        { id: 'q3', text: 'Is there a visible gap or missing lane lines in our lane?', type: 'yes_no', example: 'The lane markings disappear in the intersection area.' },
+        { id: 'q4', text: 'Do the lines of two different lanes converge into the same line?', type: 'yes_no', example: 'Two lanes merge into one as indicated by converging markings.' }
+      ]
+    },
+    'Roundabout': {
+      timeSpan: '-2, -1, 0, 1, 2',
+      questions: [
+        { id: 'q1', text: 'Is the car inside a roundabout?', type: 'yes_no', example: 'The vehicle is traveling within a circular roadway with central island.' },
+        { id: 'q2', text: 'In our lane, can we see a roundabout ahead that we are approaching?', type: 'yes_no', example: 'A circular intersection sign and central island are visible ahead.' },
+        { id: 'q3', text: 'Is the car stopped while seeing a vehicle crossing almost perpendicularly?', type: 'yes_no', example: 'Our vehicle is stopped while another car crosses from left to right within the roundabout.' }
+      ]
+    },
+    'Speed limit adaptation': {
+      timeSpan: '-1, -0.5, 0, 0.5, 1',
+      questions: [
+        { id: 'q1', text: 'In the sequence, can different speed limit signs with different numbers be seen?', type: 'yes_no', example: 'Two speed limit signs with different numbers appear in sequence.' },
+        { id: 'q2', text: 'Is there any speed limit sign that affects the lane we are driving in?', type: 'yes_no', example: 'A speed limit sign is positioned on the right side facing our direction.' },
+        { id: 'q3', text: 'What is the speed indicated in the signal?', type: 'number', example: 'The visible speed limit sign displays 50 km/h.' },
+        { id: 'q4', text: 'Are we on highway?', type: 'yes_no', example: 'Multiple lanes and highway-style signage indicate a highway environment.' },
+        { id: 'q5', text: 'Are we entering or exiting a highway?', type: 'yes_no', example: 'A ramp with merge arrows indicates we are entering the highway.' },
+        { id: 'q6', text: 'Are there speed bumps, crosswalks, or construction zones in our lane?', type: 'yes_no', example: 'A marked pedestrian crosswalk is visible directly ahead in our lane.' }
+      ]
+    }
+  };
+
+  // ── COMPONENT: Image with fallback ────────────────────────────────────
+  function ImageWithFallback({ src, alt, onClick }) {
+    const [error, setError] = useState(false);
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => { setError(false); setLoaded(false); }, [src]);
+
+    return (
+      <div className="image-container" onClick={!error ? onClick : undefined} style={{ cursor: error ? 'default' : 'pointer' }}>
+        {!error ? (
+          <img
+            src={src}
+            alt={alt}
+            onError={() => setError(true)}
+            onLoad={() => setLoaded(true)}
+            style={{ opacity: loaded ? 1 : 0.3, transition: 'opacity 0.3s' }}
+          />
+        ) : (
+          <div className="img-error">
+            <span style={{ fontSize: '2rem' }}>🖼️</span>
+            <span>Image not found</span>
+            <small style={{ fontSize: '0.7rem', wordBreak: 'break-all', opacity: 0.6 }}>{src.split('/').slice(-3).join('/')}</small>
+          </div>
+        )}
+        <div className="image-label">{alt}</div>
+      </div>
+    );
+  }
+
+  // ── MAIN APP ──────────────────────────────────────────────────────────
+  function App() {
+    const [mode, setMode] = useState('setup'); // setup | labeling | complete
+    const [labelerName, setLabelerName] = useState('');
+    const [imageBaseUrl, setImageBaseUrl] = useState('https://unachieved-lavenia-unprotuberantly.ngrok-free.dev');
+    const [casesData, setCasesData] = useState([]);
+    const [currentCaseIndex, setCurrentCaseIndex] = useState(0);
+    const [answers, setAnswers] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [zoomedImage, setZoomedImage] = useState(null);
+    const [labeledCases, setLabeledCases] = useState([]);
+    const [confirmedSituation, setConfirmedSituation] = useState(null);
+    const [serverStatus, setServerStatus] = useState(null); // null | 'ok' | 'error'
+    const [totalLabelers, setTotalLabelers] = useState(1);
+
+    // Load saved progress on mount
+    useEffect(() => {
+      const saved = localStorage.getItem('labeling-progress');
+      if (saved) {
+        try {
+          const p = JSON.parse(saved);
+          if (p.labeledCases) setLabeledCases(p.labeledCases);
+          if (p.casesData && p.casesData.length > 0) setCasesData(p.casesData);
+          if (p.labelerName) setLabelerName(p.labelerName);
+          if (p.imageBaseUrl) setImageBaseUrl(p.imageBaseUrl);
+          if (p.totalLabelers) setTotalLabelers(p.totalLabelers);
+        } catch (e) { console.log('No previous progress'); }
+      }
+    }, []);
+
+    const saveProgress = (newLabeled, name, url) => {
+      localStorage.setItem('labeling-progress', JSON.stringify({
+        labeledCases: newLabeled,
+        casesData: casesData,          // save so images reload correctly
+        labelerName: name || labelerName,
+        totalLabelers: totalLabelers,
+        imageBaseUrl: url || imageBaseUrl,
+        lastUpdate: new Date().toISOString()
+      }));
+    };
+
+    const checkServer = async (url) => {
+      try {
+        const r = await fetch(`${url}/api/ping`, { signal: AbortSignal.timeout(3000) });
+        return r.ok;
+      } catch { return false; }
+    };
+
+    const autoDetectCases = async () => {
+      if (!imageBaseUrl) { alert('Enter the base URL first'); return; }
+      setLoading(true);
+      setServerStatus(null);
+      try {
+        const base = imageBaseUrl.replace(/\/$/, '');
+        const apiUrl = `${base}/api/cases?labeler=${encodeURIComponent(labelerName)}&total=${totalLabelers}`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error(`Server returned ${response.status}. Make sure you run: python servidor_auto.py`);
+        const data = await response.json();
+        const cases = data.cases || data; // support both old and new server format
+        if (cases.length === 0) {
+          alert('No valid cases found. Check folder structure:\n  situation/scene_id/im1.jpg ... im5.jpg');
+        } else {
+          setCasesData(cases);
+          setServerStatus('ok');
+          const msg = totalLabelers > 1
+            ? `✓ Assigned ${cases.length} cases to you (out of ${data.total_all} total, split among ${totalLabelers} labelers)`
+            : `✓ ${cases.length} cases detected!`;
+          alert(msg);
+        }
+      } catch (error) {
+        setServerStatus('error');
+        alert(`❌ Cannot connect to server.\n\nMake sure you:\n1. Run "python servidor_auto.py" (NOT python -m http.server)\n2. The URL is correct: ${imageBaseUrl}\n\nError: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const parseCasesInput = (input) => {
+      return input.trim().split('\n')
+        .map(line => { const [sceneId, prelabel] = line.split(',').map(s => s.trim()); return sceneId && prelabel ? { sceneId, prelabel } : null; })
+        .filter(Boolean);
+    };
+
+    const startLabeling = () => {
+      if (!labelerName.trim()) { alert('Please enter your name first'); return; }
+      if (!imageBaseUrl) { alert('Please enter the base URL'); return; }
+      if (!casesData.length) { alert('Please detect or enter cases first'); return; }
+      const nextIdx = findNextUnlabeledCase();
+      if (nextIdx === -1) { alert('All cases are already labeled! Download your Excel.'); setMode('complete'); return; }
+      setCurrentCaseIndex(nextIdx);
+      setMode('labeling');
+    };
+
+    const findNextUnlabeledCase = () => {
+      const labeledIds = new Set(labeledCases.map(c => c.sceneId));
+      return casesData.findIndex(c => !labeledIds.has(c.sceneId));
+    };
+
+    const getCurrentCase = () => casesData[currentCaseIndex];
+
+    const getImageUrls = () => {
+      const c = getCurrentCase();
+      if (!c) return [];
+      const base = imageBaseUrl.replace(/\/$/, '');
+      // If server provided explicit image paths, use them
+      if (c.images && c.images.length > 0) {
+        return c.images.map(p => `${base}/${p}`);
+      }
+      // Fallback: try im1.jpg ... im5.jpg
+      return [1, 2, 3, 4, 5].map(n => `${base}/${c.folderName || c.prelabel}/${c.sceneId}/im${n}.jpg`);
+    };
+
+    const handleSituationConfirmation = (isCorrect) => {
+      const c = getCurrentCase();
+      setConfirmedSituation(isCorrect ? c.prelabel : 'empty');
+      setAnswers({});
+    };
+
+    const handleAnswerChange = (qId, value) => setAnswers(prev => ({ ...prev, [qId]: value }));
+
+    const generateWrongAnswers = async (question, correctAnswer, situation) => {
+      try {
+        const isYesNo = correctAnswer === 'Yes' || correctAnswer === 'No';
+        const isGreenRed = correctAnswer === 'Green' || correctAnswer === 'Red';
+        const isNumber = !isNaN(correctAnswer) && correctAnswer !== '';
+
+        let wrongAnswers;
+        if (isYesNo) {
+          // For Yes/No, the one wrong answer is always the opposite. Return 3 variations.
+          const opposite = correctAnswer === 'Yes' ? 'No' : 'Yes';
+          wrongAnswers = [opposite, opposite, opposite];
+        } else if (isGreenRed) {
+          const opposite = correctAnswer === 'Green' ? 'Red' : 'Green';
+          wrongAnswers = [opposite, opposite, opposite];
+        } else {
+          // For number or open answers, ask the AI for plausible alternatives
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 300,
+              messages: [{
+                role: 'user',
+                content: `You are helping build a multiple-choice dataset for autonomous driving scenarios.
+
+Situation: ${situation}
+Question: ${question}
+Correct answer: ${correctAnswer}
+
+Generate exactly 3 plausible but INCORRECT answers. They must:
+- Be of the same type/format as the correct answer
+- Be believable distractors (not obviously wrong)
+- Be different from each other and from the correct answer
+
+Return ONLY a JSON array with 3 strings, no other text.
+Example: ["30", "70", "90"]`
+              }]
+            })
+          });
+          const data = await response.json();
+          const text = data.content?.find(c => c.type === 'text')?.text || '[]';
+          wrongAnswers = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+        }
+        return wrongAnswers;
+      } catch (e) {
+        console.error('Error generating wrong answers:', e);
+        // Sensible fallback
+        const opposite = correctAnswer === 'Yes' ? 'No' : correctAnswer === 'No' ? 'Yes' : 'N/A';
+        return [opposite, opposite, opposite];
+      }
+    };
+
+    const submitCase = async () => {
+      const currentCase = getCurrentCase();
+      const situation = confirmedSituation;
+      const situationConfig = SITUATIONS[situation];
+
+      if (situation === 'empty') {
+        const labeled = { sceneId: currentCase.sceneId, situation: 'empty', timeSpan: '', answers: [], labeler: labelerName };
+        const newLabeled = [...labeledCases, labeled];
+        setLabeledCases(newLabeled);
+        saveProgress(newLabeled);
+        moveToNextCase(newLabeled);
+        return;
+      }
+
+      if (!situationConfig) { alert('Invalid situation'); return; }
+      const allAnswered = situationConfig.questions.every(q => answers[q.id] !== undefined && answers[q.id] !== '' && answers[`${q.id}_reasoning`] !== undefined && answers[`${q.id}_reasoning`].trim() !== '');
+      if (!allAnswered) { alert('Please answer all questions before continuing'); return; }
+
+      setLoading(true);
+      const answersWithWrong = [];
+      for (const q of situationConfig.questions) {
+        const correct = answers[q.id];
+        const wrong = await generateWrongAnswers(q.text, correct, situation);
+        answersWithWrong.push({ question: q.text, correctAnswer: correct, reasoning: answers[`${q.id}_reasoning`] || '', wrongAnswers: wrong });
+      }
+
+      const labeled = {
+        sceneId: currentCase.sceneId,
+        situation,
+        timeSpan: situationConfig.timeSpan,
+        answers: answersWithWrong,
+        labeler: labelerName
+      };
+      const newLabeled = [...labeledCases, labeled];
+      setLabeledCases(newLabeled);
+      saveProgress(newLabeled);
+      setLoading(false);
+      moveToNextCase(newLabeled);
+    };
+
+    const saveAndExit = async () => {
+      // Save current answers if any question was answered, then export and go to setup
+      const currentCase = getCurrentCase();
+      if (currentCase && confirmedSituation && confirmedSituation !== 'empty') {
+        const situation = confirmedSituation;
+        const situationConfig = SITUATIONS[situation];
+        const anyAnswered = situationConfig && situationConfig.questions.some(q => answers[q.id]);
+        if (anyAnswered) {
+          const partial = window.confirm('You have unsaved answers for the current case. Save this case before exiting?');
+          if (partial) {
+            await submitCase();
+            return; // submitCase will navigate away; then user can call exportToExcel from complete screen
+          }
+        }
+      }
+      exportToExcel();
+      setMode('setup');
+    };
+
+    const moveToNextCase = (newLabeled) => {
+      setAnswers({});
+      setConfirmedSituation(null);
+      // Use the freshly updated list, not the stale state
+      const labeled = newLabeled || labeledCases;
+      const labeledIds = new Set(labeled.map(c => c.sceneId));
+      const next = casesData.findIndex(c => !labeledIds.has(c.sceneId));
+      if (next !== -1) setCurrentCaseIndex(next);
+      else setMode('complete');
+    };
+
+    const exportToExcel = () => {
+      const rows = [];
+      labeledCases.forEach(lc => {
+        if (lc.situation === 'empty') {
+          rows.push({ 'Labeler': lc.labeler || '', 'Scene ID': lc.sceneId, 'Situation': 'empty', 'Question': '', 'Correct Answer': '', 'Example Reasoning': '', 'Wrong Answer 1': '', 'Wrong Answer 2': '', 'Wrong Answer 3': '', 'Time Span': '' });
+        } else {
+          lc.answers.forEach((ans, idx) => {
+            rows.push({
+              'Labeler': lc.labeler || '',
+              'Scene ID': lc.sceneId,
+              'Situation': lc.situation,
+              'Question': ans.question,
+              'Correct Answer': ans.correctAnswer,
+              'Reasoning': ans.reasoning || '',
+              'Example Reasoning': ans.correctAnswer,
+              'Wrong Answer 1': ans.wrongAnswers[0] || '',
+              'Wrong Answer 2': ans.wrongAnswers[1] || '',
+              'Wrong Answer 3': ans.wrongAnswers[2] || '',
+              'Time Span': lc.timeSpan
+            });
+          });
+        }
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      // Auto-width columns
+      const colWidths = Object.keys(rows[0] || {}).map(k => ({ wch: Math.max(k.length, 18) }));
+      ws['!cols'] = colWidths;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Labeled Data');
+      const safeName = (labelerName || 'labeler').replace(/\s+/g, '_');
+      XLSX.writeFile(wb, `labeled_${safeName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
+    const clearProgress = () => {
+      if (window.confirm('Are you sure you want to clear all progress? This cannot be undone.')) {
+        localStorage.removeItem('labeling-progress');
+        setLabeledCases([]);
+        alert('Progress cleared.');
+      }
+    };
+
+    // ── RENDER: Setup ────────────────────────────────────────────────────
+    const renderSetup = () => (
+      <div className="setup-screen">
+        <h2>🚗 Dataset Labeling Setup</h2>
+
+        <div className="setup-instructions">
+          <h3 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>How it works</h3>
+          <ol>
+            <li>Start the server: <code>python servidor_auto.py</code> (in the images folder)</li>
+            <li>Enter your name and the server URL below</li>
+            <li>Click <strong>Auto-detect Cases</strong> — no manual config needed</li>
+            <li>Label cases and download your Excel at the end</li>
+          </ol>
+        </div>
+
+        <div className="input-group">
+          <label>👤 Your Name (for the output file)</label>
+          <input
+            type="text"
+            value={labelerName}
+            onChange={e => setLabelerName(e.target.value)}
+            placeholder="e.g. Maria García"
+          />
+        </div>
+
+        <hr className="section-divider" />
+
+        <div className="input-group">
+          <label>👥 How many people are labeling simultaneously?</label>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {[1, 2, 3, 4, 5, 6].map(n => (
+              <button
+                key={n}
+                onClick={() => setTotalLabelers(n)}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '8px',
+                  border: `2px solid ${totalLabelers === n ? 'var(--primary)' : 'var(--border)'}`,
+                  background: totalLabelers === n ? 'var(--primary)' : 'var(--bg-main)',
+                  color: totalLabelers === n ? 'white' : 'var(--text-secondary)',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  transition: 'all 0.15s',
+                }}
+              >{n === 1 ? '1 (solo)' : n}</button>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>or enter:</span>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={totalLabelers}
+                onChange={e => setTotalLabelers(Math.max(1, parseInt(e.target.value) || 1))}
+                style={{ width: '70px', padding: '0.5rem', background: 'var(--bg-main)', border: `2px solid ${[1,2,3,4,5,6].includes(totalLabelers) ? 'var(--border)' : 'var(--primary)'}`, borderRadius: '8px', color: 'var(--text-primary)', fontSize: '1rem', textAlign: 'center' }}
+              />
+            </div>
+          </div>
+          {totalLabelers > 1 && casesData.length > 0 && (
+            <div style={{ marginTop: '0.75rem', background: 'var(--bg-main)', borderRadius: '8px', padding: '0.75rem 1rem', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.4rem' }}>📊 Estimated case distribution ({casesData.length} total cases):</div>
+              {Array.from({length: totalLabelers}, (_, i) => {
+                const count = casesData.filter((_, idx) => idx % totalLabelers === i).length;
+                return <div key={i} style={{ fontSize: '0.85rem', color: i === 0 ? 'var(--success)' : 'var(--text-secondary)' }}>
+                  Labeler {i+1}: {count} cases {i === 0 ? '← yours (position determined by name hash)' : ''}
+                </div>;
+              })}
+            </div>
+          )}
+          {totalLabelers > 1 && (
+            <small style={{ marginTop: '0.5rem', color: 'var(--warning)', display: 'block' }}>
+              ⚠️ All labelers must enter the <strong>same total number</strong> and click Auto-detect with their own name. Cases are split with no overlaps.
+            </small>
+          )}
+        </div>
+
+        <div className="input-group">
+          <label>🌐 Server URL</label>
+          <input
+            type="text"
+            value={imageBaseUrl}
+            onChange={e => setImageBaseUrl(e.target.value.trim())}
+            placeholder="http://localhost:8000"
+          />
+          <small>
+            Local: <code>http://localhost:8000</code> &nbsp;|&nbsp;
+            Network (other computers on same WiFi): <code>http://192.168.x.x:8000</code><br/>
+            The server will print your network IP when it starts.
+          </small>
+        </div>
+
+        {serverStatus === 'error' && (
+          <div className="alert alert-danger">
+            ❌ Could not connect. Run <code>python servidor_auto.py</code> in your images folder, then try again.
+          </div>
+        )}
+        {serverStatus === 'ok' && (
+          <div className="alert alert-success">✓ Server connected successfully</div>
+        )}
+
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn btn-secondary" onClick={autoDetectCases} disabled={!imageBaseUrl || loading}>
+            {loading ? '⏳ Detecting...' : '🔍 Auto-detect Cases'}
+          </button>
+          {casesData.length > 0 && (
+            <span style={{ color: 'var(--success)' }}>✓ {casesData.length} cases loaded</span>
+          )}
+        </div>
+
+        <div className="input-group">
+          <label>📋 Cases (auto-filled or enter manually)</label>
+          <textarea
+            value={casesData.map(c => `${c.sceneId}, ${c.prelabel}`).join('\n')}
+            onChange={e => setCasesData(parseCasesInput(e.target.value))}
+            placeholder="Click 'Auto-detect Cases' or enter manually:&#10;scene_001, Traffic light&#10;scene_002, Leading braking"
+          />
+          <small>Format: <code>scene_id, Situation Name</code> — one per line</small>
+        </div>
+
+        {labeledCases.length > 0 && (
+          <div className="alert alert-info">
+            💾 {labeledCases.length} cases already labeled (saved locally). Continuing will skip them.
+          </div>
+        )}
+
+        <div className="action-buttons">
+          {labeledCases.length > 0 && (
+            <button className="btn btn-danger" onClick={clearProgress} style={{ marginRight: 'auto' }}>
+              🗑 Clear Progress
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={startLabeling} disabled={!labelerName.trim() || !casesData.length}>
+            Start Labeling →
+          </button>
+        </div>
+      </div>
+    );
+
+    // ── RENDER: Labeling ─────────────────────────────────────────────────
+    const renderLabeling = () => {
+      const currentCase = getCurrentCase();
+      if (!currentCase) return null;
+      const images = getImageUrls();
+      const situation = confirmedSituation || currentCase.prelabel;
+      const situationConfig = SITUATIONS[situation];
+      const progress = ((labeledCases.length / casesData.length) * 100).toFixed(1);
+
+      return (
+        <div className="labeling-screen">
+          <div className="progress-bar">
+            <div className="progress-info">
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <span>Progress: {labeledCases.length} / {casesData.length} cases</span>
+                <span className="labeler-badge">👤 {labelerName}</span>
+              </div>
+              <span>{progress}%</span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          <div className="stats">
+            <div className="stat-card">
+              <div className="stat-value" style={{ fontSize: '1.2rem' }}>{currentCase.sceneId}</div>
+              <div className="stat-label">Scene ID</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ fontSize: '1.2rem' }}>{currentCase.prelabel}</div>
+              <div className="stat-label">Pre-label</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{casesData.length - labeledCases.length}</div>
+              <div className="stat-label">Remaining</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{labeledCases.length}</div>
+              <div className="stat-label">Completed</div>
+            </div>
+          </div>
+
+          <div className="image-viewer">
+            <h3 style={{ marginBottom: '1rem' }}>📷 Images (click to zoom)</h3>
+            <div className="image-grid">
+              {images.map((url, idx) => (
+                <ImageWithFallback
+                  key={idx}
+                  src={url}
+                  alt={`Image ${idx + 1}`}
+                  onClick={() => setZoomedImage(url)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="question-form">
+            {!confirmedSituation && (
+              <div className="question-section">
+                <h3>Situation Confirmation</h3>
+                <div className="question-text">
+                  Do the images correspond to the situation: <strong>"{currentCase.prelabel}"</strong>?
+                </div>
+                <div className="action-buttons" style={{ justifyContent: 'flex-start' }}>
+                  <button className="btn btn-success" onClick={() => handleSituationConfirmation(true)}>
+                    ✓ Yes, correct
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => handleSituationConfirmation(false)}>
+                    ✗ No, mark as empty
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirmedSituation === 'empty' && (
+              <div className="alert alert-warning">
+                ⚠️ This case will be marked as <strong>empty</strong>. Click "Save &amp; Continue" to proceed.
+              </div>
+            )}
+
+            {confirmedSituation && situationConfig && (
+              <>
+                <div className="alert alert-success">✓ Situation confirmed: {situation} — Time span: {situationConfig.timeSpan}</div>
+
+                {situationConfig.questions.map((q, idx) => (
+                  <div key={q.id} className="question-section">
+                    <h3>Question {idx + 1} of {situationConfig.questions.length}</h3>
+                    <div className="question-text">{q.text}</div>
+                    <div className="example-answer">
+                      <strong>💡 Example reasoning:</strong>
+                      {q.example}
+                    </div>
+
+                    {q.type === 'yes_no' && (
+                      <div className="radio-group">
+                        {['Yes', 'No'].map(opt => (
+                          <div className="radio-option" key={opt}>
+                            <input type="radio" id={`${q.id}-${opt}`} name={q.id} checked={answers[q.id] === opt} onChange={() => handleAnswerChange(q.id, opt)} />
+                            <label htmlFor={`${q.id}-${opt}`}>{opt}</label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {q.type === 'green_red' && (
+                      <div className="radio-group">
+                        {['Green', 'Red'].map(opt => (
+                          <div className="radio-option" key={opt}>
+                            <input type="radio" id={`${q.id}-${opt}`} name={q.id} checked={answers[q.id] === opt} onChange={() => handleAnswerChange(q.id, opt)} />
+                            <label htmlFor={`${q.id}-${opt}`} style={opt === 'Green' ? { borderColor: answers[q.id] === 'Green' ? '#10b981' : undefined } : {}}>
+                              {opt === 'Green' ? '🟢 Green' : '🔴 Red'}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {q.type === 'number' && (
+                      <div className="input-group" style={{ marginBottom: 0 }}>
+                        <input
+                          type="number"
+                          value={answers[q.id] || ''}
+                          onChange={e => handleAnswerChange(q.id, e.target.value)}
+                          placeholder="e.g. 50"
+                          style={{ maxWidth: '200px' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Reasoning textarea for all question types */}
+                    <div className="input-group" style={{ marginTop: '1rem', marginBottom: 0 }}>
+                      <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        ✍️ Your reasoning <span style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>*required</span>
+                      </label>
+                      <textarea
+                        value={answers[`${q.id}_reasoning`] || ''}
+                        onChange={e => handleAnswerChange(`${q.id}_reasoning`, e.target.value)}
+                        placeholder="Explain what you see in the images that led to this answer..."
+                        rows="2"
+                        style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', resize: 'vertical' }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {confirmedSituation && (
+              <div className="action-buttons">
+                <button className="btn btn-secondary" onClick={() => { setConfirmedSituation(null); setAnswers({}); }}>
+                  ← Back
+                </button>
+                <button className="btn btn-warning" onClick={saveAndExit} disabled={loading} style={{ background: '#f59e0b', color: 'white' }}>
+                  💾 Save & Exit
+                </button>
+                <button className="btn btn-primary" onClick={submitCase} disabled={loading}>
+                  {loading ? '⏳ Generating wrong answers...' : 'Save & Continue →'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ── RENDER: Complete ─────────────────────────────────────────────────
+    const renderComplete = () => (
+      <div className="setup-screen">
+        <h2>🎉 Labeling Complete!</h2>
+        <div className="stats" style={{ marginTop: '2rem' }}>
+          <div className="stat-card"><div className="stat-value">{labeledCases.length}</div><div className="stat-label">Total Labeled</div></div>
+          <div className="stat-card"><div className="stat-value">{labeledCases.filter(c => c.situation !== 'empty').length}</div><div className="stat-label">With Full Data</div></div>
+          <div className="stat-card"><div className="stat-value">{labeledCases.filter(c => c.situation === 'empty').length}</div><div className="stat-label">Marked Empty</div></div>
+        </div>
+        <div className="alert alert-success" style={{ marginTop: '2rem' }}>
+          All cases labeled, <strong>{labelerName}</strong>! Download your Excel file below.
+        </div>
+        <div className="action-buttons">
+          <button className="btn btn-secondary" onClick={() => { setMode('setup'); setCasesData([]); setCurrentCaseIndex(0); }}>
+            New Dataset
+          </button>
+          <button className="btn btn-success" onClick={exportToExcel}>
+            📥 Download Excel
+          </button>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="app-container">
+        <div className="header">
+          <h1>Dataset Labeling System</h1>
+          <p>Collaborative labeling tool for autonomous driving scenarios</p>
+        </div>
+        <div className="main-content">
+          {mode === 'setup' && renderSetup()}
+          {mode === 'labeling' && renderLabeling()}
+          {mode === 'complete' && renderComplete()}
+        </div>
+
+        {zoomedImage && (() => {
+          const imgs = getImageUrls();
+          const currentIdx = imgs.indexOf(zoomedImage);
+          const goPrev = (e) => { e.stopPropagation(); if (currentIdx > 0) setZoomedImage(imgs[currentIdx - 1]); };
+          const goNext = (e) => { e.stopPropagation(); if (currentIdx < imgs.length - 1) setZoomedImage(imgs[currentIdx + 1]); };
+          return (
+            <div className="modal" onClick={() => setZoomedImage(null)}>
+              <div className="modal-close" onClick={() => setZoomedImage(null)}>×</div>
+              <div style={{ position: 'absolute', top: '50%', left: '1.5rem', transform: 'translateY(-50%)' }}>
+                <button onClick={goPrev} disabled={currentIdx <= 0}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: '2rem', borderRadius: '50%', width: '52px', height: '52px', cursor: currentIdx <= 0 ? 'default' : 'pointer', opacity: currentIdx <= 0 ? 0.3 : 1 }}>
+                  ‹
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }} onClick={e => e.stopPropagation()}>
+                <img src={zoomedImage} alt="Zoomed" style={{ maxWidth: '85vw', maxHeight: '82vh', borderRadius: '12px' }} />
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+                  Image {currentIdx + 1} of {imgs.length}
+                </div>
+              </div>
+              <div style={{ position: 'absolute', top: '50%', right: '1.5rem', transform: 'translateY(-50%)' }}>
+                <button onClick={goNext} disabled={currentIdx >= imgs.length - 1}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: '2rem', borderRadius: '50%', width: '52px', height: '52px', cursor: currentIdx >= imgs.length - 1 ? 'default' : 'pointer', opacity: currentIdx >= imgs.length - 1 ? 0.3 : 1 }}>
+                  ›
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {loading && (
+          <div className="modal">
+            <div className="loading">
+              <div className="spinner" />
+              <p>Generating wrong answers with AI...</p>
+              <small style={{ marginTop: '0.5rem', opacity: 0.6 }}>This may take a few seconds per question</small>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
